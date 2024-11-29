@@ -26,4 +26,4 @@ examples = [
 ]
 
 [tool.setuptools]
-packages = ["paramperceptnet"]
+packages = ["pnetkld"]
