@@ -1,3 +1,5 @@
+from typing import Any
+
 import jax
 from jax import random, numpy as jnp
 from flax import struct
