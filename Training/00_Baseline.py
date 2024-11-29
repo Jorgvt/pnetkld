@@ -75,7 +75,6 @@ wandb.init(project="PerceptNet_KLD",
            config=dict(config),
            mode=args["wandb"],
            )
-config = wandb.config
 print(config)
 
 if config.MODEL == "independent":
