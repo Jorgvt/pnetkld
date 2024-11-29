@@ -28,7 +28,7 @@ def create_train_state(module, key, tx, config, input_shape):
         params=params,
         state=state,
         tx=tx,
-        config=config,
+        config=dict(config),
         metrics=Metrics.empty()
     )
 
