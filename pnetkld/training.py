@@ -51,10 +51,10 @@ def kld(mean_p, logstd_p, mean_q, logstd_q, axis=(1,2,3)):
     """Assume diagonal covariance matrix and that the input is the logvariance."""
     std_p, std_q = jnp.exp(logstd_p), jnp.exp(logstd_q)
     # def safe_div(a, b): return a/b #jnp.where(a == b, 1, a/b)
-    logdet_p = jnp.sum(logstd_p, axis=axis)
-    logdet_q = jnp.sum(logstd_q, axis=axis)
+    logdet_p = jnp.mean(logstd_p, axis=axis)
+    logdet_q = jnp.mean(logstd_q, axis=axis)
     
-    return (logdet_q - logdet_p) + jnp.sum((1/std_q)*(mean_p - mean_q)**2, axis=axis) + jnp.sum(std_p/std_q, axis=axis)
+    return (logdet_q - logdet_p) + jnp.mean((1/std_q)*(mean_p - mean_q)**2, axis=axis) + jnp.mean(std_p/std_q, axis=axis) - 1
 
 def js(mean_p, logstd_p, mean_q, logstd_q, axis=(1,2,3)):
     return (1/2)*(kld(mean_p, logstd_p, mean_q, logstd_q, axis) + kld(mean_q, logstd_q, mean_p, logstd_p, axis))
