@@ -17,10 +17,12 @@ class Metrics(metrics.Collection):
 class TrainState(train_state.TrainState):
     metrics: Metrics
     state: FrozenDict
-    config: Any
+    distance: int
+    l: float
 
 def create_train_state(module, key, tx, config, input_shape):
     """Creates the initial `TrainState`."""
+    distance = 0 if config.DISTANCE=="kld" else 1
     variables = module.init(key, jnp.ones(input_shape))
     state, params = variables.pop('params')
     return TrainState.create(
@@ -28,7 +30,8 @@ def create_train_state(module, key, tx, config, input_shape):
         params=params,
         state=state,
         tx=tx,
-        config=dict(config),
+        distance=distance,
+        l=config.LAMBDA,
         metrics=Metrics.empty()
     )
 
@@ -62,23 +65,18 @@ def train_step(state, batch):
     img, img_dist, mos = batch
     def loss_fn(params):
         ## Forward pass through the model
-        if state.config.distance in ["kld", "js"]:
-            (img_mean, img_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
-            (img_dist_mean, img_dist_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
-            ## Calculate the KLD
-            if state.config.DISTANCE == "kld": dist = kld(img_mean, img_logstd, img_dist_mean, img_dist_logstd)
-            if state.config.DISTANCE == "js": dist = js(img_mean, img_logstd, img_dist_mean, img_dist_logstd)
-            regularization = (jnp.mean(jnp.exp(img_logstd)**2) + jnp.mean(jnp.exp(img_dist_logstd)**2))
-        
-        elif state.config.DISTANCE == "mse":
-            img_pred, updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
-            img_dist_pred, updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
-            ## Calculate the MSE
-            dist = ((img_pred - img_dist_pred)**2).sum(axis=(1,2,3))**(1/2)
-            regularization = 0
+        (img_mean, img_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
+        (img_dist_mean, img_dist_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
+        ## Calculate the KLD
+        dist = jax.lax.cond(state.distance == 0,
+                            kld,
+                            js,
+                            img_mean, img_logstd, img_dist_mean, img_dist_logstd)
 
+        regularization = (jnp.mean(jnp.exp(img_logstd)**2) + jnp.mean(jnp.exp(img_dist_logstd)**2))
+        
         ## Calculate pearson correlation
-        return pearson_correlation(dist, mos) + state.config.LAMBDA*regularization, (updated_state, regularization)
+        return pearson_correlation(dist, mos) + state.l*regularization, (updated_state, regularization)
     
     (loss, (updated_state, regularization)), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
@@ -95,19 +93,16 @@ def compute_metrics(state, batch):
     img, img_dist, mos = batch
     def loss_fn(params):
         ## Forward pass through the model
-        if state.config.DISTANCE in ["kld", "js"]:
-            (img_mean, img_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
-            (img_dist_mean, img_dist_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
-            ## Calculate the KLD
-            if state.config.DISTANCE == "kld": dist = kld(img_mean, img_logstd, img_dist_mean, img_dist_logstd)
-            if state.config.DISTANCE == "js": dist = js(img_mean, img_logstd, img_dist_mean, img_dist_logstd)
-        
-        elif state.config.distance == "mse":
-            img_pred, updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
-            img_dist_pred, updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
-            ## Calculate the MSE
-            dist = ((img_pred - img_dist_pred)**2).sum(axis=(1,2,3))**(1/2)
+        (img_mean, img_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
+        (img_dist_mean, img_dist_logstd), updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
+        ## Calculate the KLD
+        dist = jax.lax.cond(state.distance == 0,
+                            kld,
+                            js,
+                            img_mean, img_logstd, img_dist_mean, img_dist_logstd)
 
+        regularization = (jnp.mean(jnp.exp(img_logstd)**2) + jnp.mean(jnp.exp(img_dist_logstd)**2))
+        
         ## Calculate pearson correlation
         return pearson_correlation(dist, mos)
     
