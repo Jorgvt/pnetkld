@@ -83,6 +83,8 @@ if config.MODEL == "independent":
     from pnetkld.models import IndependentMeanStd as Model
 elif config.MODEL == "dependent":
     from pnetkld.models import DependentStd as Model
+elif config.MODEL == "fixed":
+    from pnetkld.models import FixedStd as Model
 
 def resize(img, img_dist, mos):
     h, w = 384, 512
