@@ -26,7 +26,7 @@ from pnetkld.training import create_train_state, train_step, compute_metrics
 
 parser = argparse.ArgumentParser(description="Trainig a very simple model on TID08 and testing in TID13",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--model", choices=["independent", "dependent", "fixed"], help="Choose from the available models: Independent mean and std, dependent mean and std and fixed std.")
+parser.add_argument("--model", choices=["independent", "dependent", "dependent-single", "fixed"], help="Choose from the available models: Independent mean and std, dependent mean and std and fixed std.")
 parser.add_argument("--distance", choices=["mse", "kld", "js"], help="Choose from the available metrics: mse, kld and js.")
 parser.add_argument("--testing", action="store_true", help="Perform only one batch of training and one of validation.")
 parser.add_argument("--wandb", default="disabled", help="WandB mode.")
@@ -83,6 +83,8 @@ if config.MODEL == "independent":
     from pnetkld.models import IndependentMeanStd as Model
 elif config.MODEL == "dependent":
     from pnetkld.models import DependentStd as Model
+elif config.MODEL == "dependent-single":
+    from pnetkld.models import DependentSingleStd as Model
 elif config.MODEL == "fixed":
     from pnetkld.models import FixedStd as Model
 
