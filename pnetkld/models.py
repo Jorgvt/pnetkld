@@ -1,6 +1,7 @@
 
 from typing import Any
 
+from jax import numpy as jnp
 import flax.linen as nn
 
 from fxlayers.layers import GDN
@@ -65,5 +66,5 @@ class FixedStd(nn.Module):
         outputs = GDN(kernel_size=self.config.GDNGAUSSIAN_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
         outputs = nn.Conv(features=self.config.N_GABORS, kernel_size=(self.config.GABOR_KERNEL_SIZE,self.config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         mean = GDN(kernel_size=self.config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
-        logstd = self.config.LOGSTD
+        logstd = self.config.LOGSTD*jnp.ones_like(mean)
         return mean, logstd
