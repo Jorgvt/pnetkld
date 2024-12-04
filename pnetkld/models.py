@@ -110,6 +110,7 @@ class IndependentSingleStd(nn.Module):
         outputs = GDN(kernel_size=self.config.GDNGAUSSIAN_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
         outputs = nn.Conv(features=self.config.N_GABORS, kernel_size=(self.config.GABOR_KERNEL_SIZE,self.config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         mean = GDN(kernel_size=self.config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
-        logstd = nn.Dense(features=1)(reduce(outputs, "b h w c -> b c", "mean"))
-        logstd = logstd[:,None,None,:]*jnp.ones_like(logstd)
+        logstd = GDN(kernel_size=self.config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
+        logstd = nn.Dense(features=1)(reduce(logstd, "b h w c -> b c", "mean"))
+        logstd = logstd[:,None,None,:]*jnp.ones_like(mean)
         return mean, logstd
