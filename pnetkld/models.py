@@ -89,7 +89,7 @@ class DependentSingleStd(nn.Module):
         outputs = nn.Conv(features=self.config.N_GABORS, kernel_size=(self.config.GABOR_KERNEL_SIZE,self.config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         mean = GDN(kernel_size=self.config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
         logstd = nn.Dense(features=1)(reduce(mean, "b h w c -> b c", "mean"))
-        logstd = logstd*jnp.ones_like(logstd)
+        logstd = logstd[:,None,None,:]*jnp.ones_like(mean)
         return mean, logstd
 
 class IndependentSingleStd(nn.Module):
